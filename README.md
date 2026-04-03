@@ -1,6 +1,6 @@
 # 📚 Repositório de Códigos — Pós-Graduação em Engenharia de Software
 
-> Armazenamento centralizado de práticas, exercícios e projetos desenvolvidos durante o curso de **Pós-Graduação em Engenharia de Software**, com foco em desenvolvimento, arquitetura de dados e cloud computing.
+> Armazenamento centralizado de práticas, exercícios e projetos desenvolvidos durante o curso de **Pós-Graduação em Engenharia de Software**, com foco em desenvolvimento, arquitetura, dados e cloud computing.
 
 ---
 
@@ -517,7 +517,6 @@ Thumbs.db
 
 Cada disciplina deve conter um `README.md` próprio:
 
-```markdown
 # Disciplina: Lógica de Programação com Java
 
 ## 📖 Conteúdo
@@ -543,7 +542,6 @@ java aula_01.HelloWorld
 ## 📚 Referências
 - [Oracle Java Docs](https://docs.oracle.com/javase/)
 - Livro: "Effective Java" - Joshua Bloch
-```
 
 ---
 
@@ -592,11 +590,11 @@ Você é livre para:
 
 ## 👤 Autor
 
-**Nome:** [Seu Nome]  
+**Nome:** Junior Moreira Martins  
 **Curso:** Pós-Graduação em Engenharia de Software  
-**Instituição:** [Sua Instituição]  
-**Contato:** [seu.email@exemplo.com](mailto:seu.email@exemplo.com)  
-**LinkedIn:** [seu-perfil](https://linkedin.com/in/seu-perfil)
+**Instituição:** Centro Universitário União das Américas Descomplica  
+**Contato:** [jumoreiram@gmail.com](mailto:jumoreiram@gmail.com)  
+**LinkedIn:** [jumoreiram](https://www.linkedin.com/in/jumoreiram/)
 
 ---
 
@@ -620,11 +618,12 @@ Dúvidas sobre o conteúdo? Consulte:
 
 ---
 
+<div align="center">
+  
 **⭐ Se este repositório foi útil, considere dar uma estrela!**
+  
+**Desenvolvido com ❤️ durante a pós-graduação**
 
-```
-╔════════════════════════════════════════════════════════════╗
-║  Desenvolvido com ❤️ durante a pós-graduação              ║
-║  Última atualização: Abril de 2024                         ║
-╚════════════════════════════════════════════════════════════╝
-```
+**Última atualização: Abril de 2024**
+
+</div>
