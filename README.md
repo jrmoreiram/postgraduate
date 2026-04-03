@@ -1,6 +1,6 @@
 # 📚 Repositório de Códigos — Pós-Graduação em Engenharia de Software
 
-> Armazenamento centralizado de práticas, exercícios e projetos desenvolvidos durante o curso de **Pós-Graduação em Engenharia de Software**, com foco em desenvolvimento, arquitetura, dados e cloud computing.
+> Armazenamento centralizado de práticas, exercícios e projetos desenvolvidos durante o curso de **Pós-Graduação em Engenharia de Software**, com foco em desenvolvimento, gestão de projetos, arquitetura, dados e cloud computing.
 
 ---
 
