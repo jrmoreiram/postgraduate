@@ -23,7 +23,7 @@
 Este repositório centraliza todos os códigos, exercícios, laboratórios e pequenos projetos desenvolvidos ao longo da **Pós-Graduação em Engenharia de Software**. Mantém histórico rastreável via Git, facilitando revisão, evolução e reutilização de conhecimento.
 
 **Público:** ✅ Repositório público  
-**Linguagens:** Java, SQL  
+**Linguagens:** Java, SQL, NoSQL, Hive, Pig Latin  
 **Período:** Módulos 1, 2 e 3 + Conteúdo Bônus
 
 ---
