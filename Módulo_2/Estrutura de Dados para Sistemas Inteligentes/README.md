@@ -1,4 +1,4 @@
-# Disciplina - Estrutura de Dados para Sistemas Inteligentes
+# Disciplina de Estrutura de Dados para Sistemas Inteligentes
 
 Um repositório educacional contendo exemplos práticos de estruturas de dados e algoritmos em Java. Este material é ideal para alunos e profissionais que desejam aprender e consolidar conhecimentos sobre programação com foco em inteligência de sistemas.
 
