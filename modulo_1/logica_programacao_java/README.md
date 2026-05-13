@@ -1,4 +1,4 @@
-# Lógica de Programação em Java
+# Disciplina de Lógica de Programação em Java
 
 Este diretório contém uma coleção estruturada de lições práticas sobre **Programação Orientada a Objetos (POO)** e **Estruturas de Dados** em Java, desenvolvido como parte do módulo 1 do programa de pós-graduação.
 
