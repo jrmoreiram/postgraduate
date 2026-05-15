@@ -1,0 +1,96 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for CloudWatch Alarms and Dashboard
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: devops-example
+  WebServerInstanceId:
+    Description: ID of the web server instance to monitor
+    Type: String
+  CodePipelineName:
+    Description: Name of the CodePipeline to monitor
+    Type: String
+
+Resources:
+  # EC2 CPU Utilization Alarm
+  CPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${EnvironmentName}-WebServer-CPUUtilization-High'
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 2
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Period: 300
+      Statistic: Average
+      Threshold: 80
+      AlarmDescription: "Alarm when EC2 CPU utilization exceeds 80% for 10 minutes"
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref WebServerInstanceId
+      TreatMissingData: notBreaching
+
+  # CodePipeline Failed Executions Alarm
+  PipelineFailedAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${EnvironmentName}-CodePipeline-FailedExecutions'
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      MetricName: FailedExecutions
+      Namespace: AWS/CodePipeline
+      Period: 300
+      Statistic: Sum
+      Threshold: 0
+      AlarmDescription: "Alarm when CodePipeline has failed executions"
+      Dimensions:
+        - Name: PipelineName
+          Value: !Ref CodePipelineName
+      TreatMissingData: notBreaching
+
+  # CloudWatch Dashboard
+  DevOpsDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub '${EnvironmentName}-DevOpsDashboard'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/EC2", "CPUUtilization", "InstanceId", "${WebServerInstanceId}" ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "EC2 CPU Utilization",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/CodePipeline", "FailedExecutions", "PipelineName", "${CodePipelineName}" ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "CodePipeline Failed Executions",
+                "period": 300
+              }
+            }
+          ]
+        }

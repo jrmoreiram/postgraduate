@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for AWS CodeDeploy application and deployment group
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: devops-example
+  CodeDeployServiceRoleArn:
+    Description: ARN of the CodeDeploy Service Role
+    Type: String
+  WebServerInstanceId:
+    Description: ID of the web server instance
+    Type: String
+
+Resources:
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: !Sub '${EnvironmentName}-CodeDeployApplication'
+      ComputePlatform: Server
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-CodeDeployApplication'
+
+  CodeDeployDeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties:
+      ApplicationName: !Ref CodeDeployApplication
+      DeploymentGroupName: !Sub '${EnvironmentName}-CodeDeployDeploymentGroup'
+      ServiceRoleArn: !Ref CodeDeployServiceRoleArn
+      DeploymentConfigName: CodeDeployDefault.OneAtATime # Or CodeDeployDefault.AllAtOnce, CodeDeployDefault.HalfAtATime
+      Ec2TagSet:
+        Ec2TagSetList:
+          - Ec2TagQueryList:
+              - Key: Name
+                Value: !Sub '${EnvironmentName}-WebServer'
+                Type: KEY_AND_VALUE
+      # For blue/green, you would configure LoadBalancerInfo and other settings here
+      # LoadBalancerInfo:
+      #   TargetGroupInfoList:
+      #     - TargetGroupName: !ImportValue 'YourLoadBalancerTargetGroupName'
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-CodeDeployDeploymentGroup'
+
+Outputs:
+  CodeDeployApplicationName:
+    Description: Name of the CodeDeploy application
+    Value: !Ref CodeDeployApplication
+    Export:
+      Name: !Sub '${EnvironmentName}-CodeDeployApplicationName'
+  CodeDeployDeploymentGroupName:
+    Description: Name of the CodeDeploy deployment group
+    Value: !Ref CodeDeployDeploymentGroup
+    Export:
+      Name: !Sub '${EnvironmentName}-CodeDeployDeploymentGroupName'
