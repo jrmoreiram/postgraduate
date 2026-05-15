@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: microservice-app
+  labels:
+    app: microservice-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: microservice-app
+  template:
+    metadata:
+      labels:
+        app: microservice-app
+    spec:
+      containers:
+        - name: microservice-app
+          image: <ECR_REPO_URI>:<IMAGE_TAG> # This will be updated by GitOps (e.g., ArgoCD Image Updater)
+          ports:
+            - containerPort: 8080
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: AWS_REGION
+              value: <AWS_REGION>
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"

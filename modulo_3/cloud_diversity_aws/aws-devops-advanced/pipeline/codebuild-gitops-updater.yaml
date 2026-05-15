@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for AWS CodeBuild project to update GitOps repository
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: devops-advanced
+  CodePipelineServiceRoleArn:
+    Description: ARN of the CodePipeline Service Role (reused for CodeBuild)
+    Type: String
+  GitHubOwner:
+    Description: The owner of the GitHub repository (e.g., your-github-username)
+    Type: String
+  GitOpsRepoName:
+    Description: The name of the GitOps repository (e.g., aws-devops-advanced-gitops)
+    Type: String
+  GitHubTokenSecretArn:
+    Description: ARN of the AWS Secrets Manager secret containing the GitHub Personal Access Token
+    Type: String
+
+Resources:
+  CodeBuildProjectGitOpsUpdater:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${EnvironmentName}-CodeBuildProject-GitOpsUpdater'
+      Description: CodeBuild project to update GitOps repository with new image tag
+      ServiceRole: !Ref CodePipelineServiceRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:6.0
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: GITHUB_OWNER
+            Value: !Ref GitHubOwner
+          - Name: GITOPS_REPO_NAME
+            Value: !Ref GitOpsRepoName
+          - Name: GITHUB_TOKEN
+            Value: !Sub '{{resolve:secretsmanager:${GitHubTokenSecretArn}:SecretString:github_token}}'
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: gitops/buildspec-gitops-update.yml
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-CodeBuildProject-GitOpsUpdater'
+
+Outputs:
+  CodeBuildProjectGitOpsUpdaterName:
+    Description: Name of the CodeBuild project for GitOps updates
+    Value: !Ref CodeBuildProjectGitOpsUpdater
+    Export:
+      Name: !Sub '${EnvironmentName}-CodeBuildProjectGitOpsUpdaterName'

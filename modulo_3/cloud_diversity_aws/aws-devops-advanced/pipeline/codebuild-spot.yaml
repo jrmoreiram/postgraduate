@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for AWS CodeBuild project with Spot Instance optimization
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: devops-advanced
+  CodePipelineServiceRoleArn:
+    Description: ARN of the CodePipeline Service Role (reused for CodeBuild)
+    Type: String
+
+Resources:
+  CodeBuildProjectSpot:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${EnvironmentName}-CodeBuildProject-Spot'
+      Description: CodeBuild project with Spot Instance optimization for Docker image build
+      ServiceRole: !Ref CodePipelineServiceRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:6.0
+        Type: LINUX_CONTAINER
+        PrivilegedMode: true # Required for Docker builds
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: microservices/buildspec-docker.yml
+      # Spot Instance configuration
+      VpcConfig:
+        VpcId: !ImportValue !Sub '${EnvironmentName}-EKS-VPCId'
+        Subnets: !Split [ ',', !ImportValue !Sub '${EnvironmentName}-EKS-PrivateSubnetIds' ]
+        SecurityGroupIds:
+          - !ImportValue !Sub '${EnvironmentName}-EKS-NodeSecurityGroup'
+      TimeoutInMinutes: 60 # Adjust timeout as needed
+      QueuedTimeoutInMinutes: 60 # Time CodeBuild waits for a spot instance
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-CodeBuildProject-Spot'
+
+Outputs:
+  CodeBuildProjectSpotName:
+    Description: Name of the CodeBuild project with Spot Instance optimization
+    Value: !Ref CodeBuildProjectSpot
+    Export:
+      Name: !Sub '${EnvironmentName}-CodeBuildProjectSpotName'

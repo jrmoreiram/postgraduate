@@ -1,0 +1,226 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for a multi-environment AWS CodePipeline for EKS
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: devops-advanced
+  CodePipelineServiceRoleArn:
+    Description: ARN of the CodePipeline Service Role
+    Type: String
+  CodePipelineArtifactsBucketName:
+    Description: Name of the S3 bucket for CodePipeline artifacts
+    Type: String
+  GitHubOwner:
+    Description: The owner of the GitHub repository (e.g., your-github-username)
+    Type: String
+  GitHubRepo:
+    Description: The name of the GitHub repository (e.g., aws-devops-advanced)
+    Type: String
+  GitHubBranch:
+    Description: The branch of the GitHub repository to use (e.g., main)
+    Type: String
+    Default: main
+  GitHubTokenSecretArn:
+    Description: ARN of the AWS Secrets Manager secret containing the GitHub Personal Access Token with repo scope.
+    Type: String
+  ECRRepositoryUri:
+    Description: URI of the ECR Repository for the microservice image
+    Type: String
+  ECRRepositoryName:
+    Description: Name of the ECR Repository for the microservice image
+    Type: String
+  EKSClusterNameDev:
+    Description: Name of the EKS Cluster for Development environment
+    Type: String
+  EKSClusterNameStaging:
+    Description: Name of the EKS Cluster for Staging environment
+    Type: String
+  EKSClusterNameProd:
+    Description: Name of the EKS Cluster for Production environment
+    Type: String
+
+Resources:
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub '${EnvironmentName}-MultiEnv-CodePipeline'
+      RoleArn: !Ref CodePipelineServiceRoleArn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref CodePipelineArtifactsBucketName
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: '1'
+              OutputArtifacts:
+                - Name: SourceArtifact
+              Configuration:
+                Owner: !Ref GitHubOwner
+                Repo: !Ref GitHubRepo
+                Branch: !Ref GitHubBranch
+                OAuthToken: !Sub '{{resolve:secretsmanager:${GitHubTokenSecretArn}:SecretString:github_token}}'
+              RunOrder: 1
+        - Name: BuildAndPush
+          Actions:
+            - Name: BuildAndPushImage
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceArtifact
+              OutputArtifacts:
+                - Name: BuildOutput
+              Configuration:
+                ProjectName: !Sub '${EnvironmentName}-CodeBuildProject-ECR'
+                EnvironmentVariables:
+                  - Name: ECR_REPO_URI
+                    Value: !Ref ECRRepositoryUri
+                  - Name: ECR_REPO_NAME
+                    Value: !Ref ECRRepositoryName
+              RunOrder: 1
+        - Name: UpdateGitOpsDev
+          Actions:
+            - Name: UpdateGitOpsRepoDev
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: BuildOutput
+                - Name: SourceArtifact # Need source for gitops/buildspec-gitops-update.yml
+              Configuration:
+                ProjectName: !ImportValue !Sub '${EnvironmentName}-CodeBuildProjectGitOpsUpdaterName'
+                EnvironmentVariables:
+                  - Name: GITHUB_OWNER
+                    Value: !Ref GitHubOwner
+                  - Name: GITOPS_REPO_NAME
+                    Value: !Ref GitHubRepo # Assuming the same repo for app code and GitOps manifests for simplicity
+                  - Name: GITHUB_TOKEN
+                    Value: !Sub '{{resolve:secretsmanager:${GitHubTokenSecretArn}:SecretString:github_token}}'
+              RunOrder: 1
+        - Name: ApprovalStaging
+          Actions:
+            - Name: ManualApprovalForStaging
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: '1'
+              Configuration:
+                NotificationArn: !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${EnvironmentName}-ApprovalTopic'
+                ExternalEntityLink: 'https://console.aws.amazon.com/codesuite/codepipeline/pipelines/${EnvironmentName}-MultiEnv-CodePipeline/view?region=${AWS::Region}'
+                CustomData: 'Approve deployment to Staging environment?'
+              RunOrder: 1
+        - Name: UpdateGitOpsStaging
+          Actions:
+            - Name: UpdateGitOpsRepoStaging
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: BuildOutput
+                - Name: SourceArtifact
+              Configuration:
+                ProjectName: !ImportValue !Sub '${EnvironmentName}-CodeBuildProjectGitOpsUpdaterName'
+                EnvironmentVariables:
+                  - Name: GITHUB_OWNER
+                    Value: !Ref GitHubOwner
+                  - Name: GITOPS_REPO_NAME
+                    Value: !Ref GitHubRepo
+                  - Name: GITHUB_TOKEN
+                    Value: !Sub '{{resolve:secretsmanager:${GitHubTokenSecretArn}:SecretString:github_token}}'
+              RunOrder: 1
+        - Name: ApprovalProd
+          Actions:
+            - Name: ManualApprovalForProd
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: '1'
+              Configuration:
+                NotificationArn: !Sub 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${EnvironmentName}-ApprovalTopic'
+                ExternalEntityLink: 'https://console.aws.amazon.com/codesuite/codepipeline/pipelines/${EnvironmentName}-MultiEnv-CodePipeline/view?region=${AWS::Region}'
+                CustomData: 'Approve deployment to Production environment?'
+              RunOrder: 1
+        - Name: UpdateGitOpsProd
+          Actions:
+            - Name: UpdateGitOpsRepoProd
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: BuildOutput
+                - Name: SourceArtifact
+              Configuration:
+                ProjectName: !ImportValue !Sub '${EnvironmentName}-CodeBuildProjectGitOpsUpdaterName'
+                EnvironmentVariables:
+                  - Name: GITHUB_OWNER
+                    Value: !Ref GitHubOwner
+                  - Name: GITOPS_REPO_NAME
+                    Value: !Ref GitHubRepo
+                  - Name: GITHUB_TOKEN
+                    Value: !Sub '{{resolve:secretsmanager:${GitHubTokenSecretArn}:SecretString:github_token}}'
+              RunOrder: 1
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-MultiEnv-CodePipeline'
+
+  # CodeBuild Project for Docker Build and Push to ECR
+  CodeBuildProjectECR:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub '${EnvironmentName}-CodeBuildProject-ECR'
+      Description: CodeBuild project to build Docker image and push to ECR
+      ServiceRole: !Ref CodePipelineServiceRoleArn # Reusing CodePipeline role for simplicity, create dedicated role in production
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:6.0
+        Type: LINUX_CONTAINER
+        PrivilegedMode: true # Required for Docker builds
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: microservices/buildspec-docker.yml # Path to buildspec for Docker build
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-CodeBuildProject-ECR'
+
+  # SNS Topic for Manual Approval Notifications
+  ApprovalSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${EnvironmentName}-ApprovalTopic'
+      DisplayName: !Sub '${EnvironmentName} CodePipeline Approval Notifications'
+
+Outputs:
+  CodePipelineName:
+    Description: Name of the Multi-Environment CodePipeline
+    Value: !Ref CodePipeline
+    Export:
+      Name: !Sub '${EnvironmentName}-MultiEnv-CodePipelineName'
+  ApprovalSNSTopicArn:
+    Description: ARN of the SNS Topic for Manual Approval Notifications
+    Value: !Ref ApprovalSNSTopic
+    Export:
+      Name: !Sub '${EnvironmentName}-ApprovalSNSTopicArn'

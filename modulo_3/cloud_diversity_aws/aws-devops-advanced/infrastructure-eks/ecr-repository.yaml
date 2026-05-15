@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for an ECR Repository for microservices
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: devops-advanced
+  RepositoryName:
+    Description: The name for the ECR repository
+    Type: String
+    Default: microservice-app
+
+Resources:
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${EnvironmentName}-${RepositoryName}'
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      ImageTagMutability: MUTABLE
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-${RepositoryName}-ECR'
+
+Outputs:
+  ECRRepositoryUri:
+    Description: The URI of the ECR Repository
+    Value: !GetAtt ECRRepository.RepositoryUri
+    Export:
+      Name: !Sub '${EnvironmentName}-${RepositoryName}-ECRRepositoryUri'
+  ECRRepositoryName:
+    Description: The name of the ECR Repository
+    Value: !Ref ECRRepository
+    Export:
+      Name: !Sub '${EnvironmentName}-${RepositoryName}-ECRRepositoryName'

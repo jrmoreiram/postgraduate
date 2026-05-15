@@ -1,0 +1,28 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo Configuring Git...
+      - git config --global user.email "codebuild@example.com"
+      - git config --global user.name "CodeBuild"
+  build:
+    commands:
+      - echo Extracting image tag from imageDetail.json...
+      - IMAGE_URI=$(cat imageDetail.json | jq -r ".ImageURI")
+      - IMAGE_TAG=$(echo $IMAGE_URI | cut -d ":" -f 2)
+      - REPO_NAME=$(echo $IMAGE_URI | cut -d "/" -f 2 | cut -d ":" -f 1)
+      - echo Image Tag: $IMAGE_TAG
+      - echo Repository Name: $REPO_NAME
+
+      - echo Cloning GitOps repository...
+      - git clone https://oauth2:$GITHUB_TOKEN@github.com/$GITHUB_OWNER/$GITOPS_REPO_NAME.git
+      - cd $GITOPS_REPO_NAME/gitops/kubernetes
+
+      - echo Updating kustomization.yaml with new image tag...
+      - sed -i "s|newTag: .*|newTag: $IMAGE_TAG|" kustomization.yaml
+
+      - echo Committing and pushing changes...
+      - git add kustomization.yaml
+      - git commit -m "Update $REPO_NAME image tag to $IMAGE_TAG via CodePipeline"
+      - git push

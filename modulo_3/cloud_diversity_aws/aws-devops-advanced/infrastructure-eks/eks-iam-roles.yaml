@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for IAM Roles for EKS Cluster and Node Group
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: devops-advanced
+
+Resources:
+  EKSClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${EnvironmentName}-EKSClusterRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - eks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSVPCResourceController
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-EKSClusterRole'
+
+  EKSNodeInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${EnvironmentName}-EKSNodeInstanceRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess # For X-Ray integration
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-EKSNodeInstanceRole'
+
+  EKSNodeInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub '${EnvironmentName}-EKSNodeInstanceProfile'
+      Path: /
+      Roles:
+        - !Ref EKSNodeInstanceRole
+
+Outputs:
+  EKSClusterRoleArn:
+    Description: ARN of the EKS Cluster Role
+    Value: !GetAtt EKSClusterRole.Arn
+    Export:
+      Name: !Sub '${EnvironmentName}-EKSClusterRoleArn'
+
+  EKSNodeInstanceRoleArn:
+    Description: ARN of the EKS Node Instance Role
+    Value: !GetAtt EKSNodeInstanceRole.Arn
+    Export:
+      Name: !Sub '${EnvironmentName}-EKSNodeInstanceRoleArn'
+
+  EKSNodeInstanceProfileArn:
+    Description: ARN of the EKS Node Instance Profile
+    Value: !GetAtt EKSNodeInstanceProfile.Arn
+    Export:
+      Name: !Sub '${EnvironmentName}-EKSNodeInstanceProfileArn'

@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for Lambda and EventBridge to trigger CodePipeline
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: devops-advanced
+  CodePipelineName:
+    Description: Name of the CodePipeline to be triggered
+    Type: String
+
+Resources:
+  # IAM Role for Lambda Function
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${EnvironmentName}-LambdaExecutionRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CodePipelineStartExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codepipeline:StartPipelineExecution
+                Resource: !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${CodePipelineName}'
+
+  # Lambda Function to trigger CodePipeline
+  CodePipelineTriggerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${EnvironmentName}-CodePipelineTriggerLambda'
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      Code:
+        ZipFile: |
+          const AWS = require('aws-sdk');
+          const codepipeline = new AWS.CodePipeline();
+
+          exports.handler = async (event) => {
+            console.log('Received event:', JSON.stringify(event, null, 2));
+            const pipelineName = process.env.CODEPIPELINE_NAME;
+
+            if (!pipelineName) {
+              console.error('CODEPIPELINE_NAME environment variable is not set.');
+              return { statusCode: 500, body: 'CODEPIPELINE_NAME not set' };
+            }
+
+            const params = {
+              name: pipelineName
+            };
+
+            try {
+              await codepipeline.startPipelineExecution(params).promise();
+              console.log(`Pipeline ${pipelineName} started successfully.`);
+              return { statusCode: 200, body: `Pipeline ${pipelineName} started` };
+            } catch (error) {
+              console.error('Error starting pipeline:', error);
+              return { statusCode: 500, body: `Error starting pipeline: ${error.message}` };
+            }
+          };
+      Environment:
+        Variables:
+          CODEPIPELINE_NAME: !Ref CodePipelineName
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-CodePipelineTriggerLambda'
+
+  # EventBridge Rule to trigger Lambda (e.g., on a schedule or S3 event)
+  # This example uses a scheduled rule. You can modify it to trigger on other events.
+  ScheduledTriggerRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${EnvironmentName}-ScheduledCodePipelineTrigger'
+      Description: Triggers the CodePipelineTriggerLambda function on a schedule
+      ScheduleExpression: 'rate(1 day)' # Triggers once every day. Adjust as needed.
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt CodePipelineTriggerLambda.Arn
+          Id: 'CodePipelineTriggerLambdaTarget'
+
+  # Permission for EventBridge to invoke Lambda
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt CodePipelineTriggerLambda.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt ScheduledTriggerRule.Arn
+
+Outputs:
+  LambdaFunctionName:
+    Description: Name of the Lambda function
+    Value: !Ref CodePipelineTriggerLambda
+    Export:
+      Name: !Sub '${EnvironmentName}-CodePipelineTriggerLambdaName'
+  EventBridgeRuleName:
+    Description: Name of the EventBridge Rule
+    Value: !Ref ScheduledTriggerRule
+    Export:
+      Name: !Sub '${EnvironmentName}-ScheduledCodePipelineTriggerName'

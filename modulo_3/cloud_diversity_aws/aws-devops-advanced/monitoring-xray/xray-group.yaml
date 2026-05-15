@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for AWS X-Ray Group
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: devops-advanced
+
+Resources:
+  XRayGroup:
+    Type: AWS::XRay::Group
+    Properties:
+      GroupName: !Sub '${EnvironmentName}-MicroserviceGroup'
+      FilterExpression: "service(\"microservice-app\")"
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-XRayGroup'
+
+Outputs:
+  XRayGroupName:
+    Description: Name of the X-Ray Group
+    Value: !Ref XRayGroup
+    Export:
+      Name: !Sub '${EnvironmentName}-XRayGroupName'

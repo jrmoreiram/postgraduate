@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for an EKS Cluster and Node Group
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: devops-advanced
+  VPCId:
+    Description: The VPC ID for the EKS cluster
+    Type: String
+  PrivateSubnetIds:
+    Description: Comma-separated list of Private Subnet IDs for the EKS cluster
+    Type: String
+  EKSClusterRoleArn:
+    Description: ARN of the IAM Role for the EKS Cluster
+    Type: String
+  EKSNodeInstanceRoleArn:
+    Description: ARN of the IAM Role for the EKS Node Instances
+    Type: String
+  NodeInstanceType:
+    Description: EC2 instance type for EKS worker nodes
+    Type: String
+    Default: t3.medium
+  NodeGroupDesiredCapacity:
+    Description: Desired number of EKS worker nodes
+    Type: Number
+    Default: 2
+  NodeGroupMinCapacity:
+    Description: Minimum number of EKS worker nodes
+    Type: Number
+    Default: 1
+  NodeGroupMaxCapacity:
+    Description: Maximum number of EKS worker nodes
+    Type: Number
+    Default: 3
+
+Resources:
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Sub '${EnvironmentName}-EKSCluster'
+      Version: '1.28' # Specify your desired Kubernetes version
+      RoleArn: !Ref EKSClusterRoleArn
+      ResourcesVpcConfig:
+        SecurityGroupIds:
+          - !GetAtt EKSClusterSecurityGroup.GroupId
+        SubnetIds: !Split [ ',', !Ref PrivateSubnetIds ]
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-EKSCluster'
+
+  EKSClusterSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the EKS cluster control plane
+      VpcId: !Ref VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !GetAtt EKSNodeSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-EKSClusterSecurityGroup'
+
+  EKSNodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the EKS worker nodes
+      VpcId: !Ref VPCId
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          SourceSecurityGroupId: !GetAtt EKSClusterSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-EKSNodeSecurityGroup'
+
+  EKSNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      ClusterName: !Ref EKSCluster
+      NodegroupName: !Sub '${EnvironmentName}-NodeGroup'
+      NodeRole: !Ref EKSNodeInstanceRoleArn
+      Subnets: !Split [ ',', !Ref PrivateSubnetIds ]
+      InstanceTypes:
+        - !Ref NodeInstanceType
+      ScalingConfig:
+        DesiredSize: !Ref NodeGroupDesiredCapacity
+        MinSize: !Ref NodeGroupMinCapacity
+        MaxSize: !Ref NodeGroupMaxCapacity
+      DiskSize: 20
+      RemoteAccess:
+        Ec2SshKey: !Sub '${EnvironmentName}-EKS-KeyPair' # Replace with your EC2 KeyPair name
+        SourceSecurityGroups:
+          - !GetAtt EKSNodeSecurityGroup.GroupId
+      Tags:
+        # Tag the node group for Kubernetes auto-discovery
+        k8s.io/cluster-autoscaler/enabled: 'true'
+        k8s.io/cluster-autoscaler/!Sub '${EnvironmentName}-EKSCluster': 'owned'
+        Name: !Sub '${EnvironmentName}-EKSNodeGroup'
+
+Outputs:
+  EKSClusterName:
+    Description: Name of the EKS Cluster
+    Value: !Ref EKSCluster
+    Export:
+      Name: !Sub '${EnvironmentName}-EKSClusterName'
+
+  EKSNodeGroupArn:
+    Description: ARN of the EKS Node Group
+    Value: !GetAtt EKSNodeGroup.Arn
+    Export:
+      Name: !Sub '${EnvironmentName}-EKSNodeGroupArn'
