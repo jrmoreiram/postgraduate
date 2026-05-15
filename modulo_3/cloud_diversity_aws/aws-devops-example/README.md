@@ -232,7 +232,7 @@ aws cloudformation delete-stack --stack-name devops-example-s3-artifacts --regio
 
 ---
 
-**Autor**: Junior Moreira Martins
-**Disciplina**: Cloud diversity AWS
-**Curso**: Pós-graduação em Engenharia de Software
-**Data**: 15 de maio de 2026
+**Autor**: Junior Moreira Martins  
+**Disciplina**: Cloud diversity AWS  
+**Curso**: Pós-graduação em Engenharia de Software  
+**Última atualização:**: Maio de 2026  
