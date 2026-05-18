@@ -99,9 +99,9 @@ Repositório de análise de dados e Business Intelligence do Módulo 3 - Pós-Gr
 
 ## 👥 Contato & Suporte
 
-Desenvolvido como parte do Módulo 3 - Analytics & Business Intelligence - Pós-Graduação em Engenharia de Software.
+Desenvolvido como parte do Módulo 3 - Analytics & Business Intelligence - Pós-Graduação em Engenharia de Software.  
 
 ---
 
-**Última atualização**: Maio 2026
-**Status**: ✅ Completo e funcional
+**Última atualização**: Maio 2026  
+**Status**: ✅ Completo e funcional  
